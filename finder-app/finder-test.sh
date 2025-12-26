@@ -10,64 +10,51 @@ WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
 username=$(cat conf/username.txt)
 
+# Clean previous build artifacts and build writer natively
+make clean
+make
+
 if [ $# -lt 3 ]
 then
-	echo "Using default value ${WRITESTR} for string to write"
-	if [ $# -lt 1 ]
-	then
-		echo "Using default value ${NUMFILES} for number of files to write"
-	else
-		NUMFILES=$1
-	fi	
+    echo "Using default value ${WRITESTR} for string to write"
+    if [ $# -lt 1 ]
+    then
+        echo "Using default value ${WRITEDIR} for files directory"
+    else
+        WRITEDIR=$1
+    fi
 else
-	NUMFILES=$1
-	WRITESTR=$2
-	WRITEDIR=/tmp/aeld-data/$3
+    WRITESTR=$3
+    WRITEDIR=$1
 fi
 
 MATCHSTR="The number of files are ${NUMFILES} and the number of matching lines are ${NUMFILES}"
 
-echo "Writing ${NUMFILES} files containing string ${WRITESTR} to ${WRITEDIR}"
+# Remove and recreate the directory
+rm -rf "$WRITEDIR"
+mkdir -p "$WRITEDIR"
 
-rm -rf "${WRITEDIR}"
-
-# create $WRITEDIR if not assignment1
-assignment=`cat ../conf/assignment.txt`
-
-if [ $assignment != 'assignment1' ]
-then
-	mkdir -p "$WRITEDIR"
-
-	#The WRITEDIR is in quotes because if the directory path consists of spaces, then variable substitution will consider it as multiple argument.
-	#The quotes signify that the entire string in WRITEDIR is a single string.
-	#This issue can also be resolved by using double square brackets i.e [[ ]] instead of using quotes.
-	if [ -d "$WRITEDIR" ]
-	then
-		echo "$WRITEDIR created"
-	else
-		exit 1
-	fi
-fi
-#echo "Removing the old writer utility and compiling as a native application"
-#make clean
-#make
-
-for i in $( seq 1 $NUMFILES)
+# Create files using the C writer application
+i=1
+while [ $i -le $NUMFILES ]
 do
-	./writer.sh "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+    ./writer "$WRITEDIR/$username$i.txt" "$WRITESTR"
+    i=$((i + 1))
 done
 
+# Run finder and capture output
 OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
 
-# remove temporary directories
+# Remove temporary directories
 rm -rf /tmp/aeld-data
 
 set +e
-echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
+echo "${OUTPUTSTRING}" | grep "${MATCHSTR}"
 if [ $? -eq 0 ]; then
-	echo "success"
-	exit 0
+    echo "success"
+    exit 0
 else
-	echo "failed: expected  ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
-	exit 1
+    echo "failed: expected ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
+    exit 1
 fi
+
